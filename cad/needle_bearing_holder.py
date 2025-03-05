@@ -6,13 +6,15 @@ import build123d_ease as bde
 from build123d_ease import show
 from loguru import logger
 
+# TODO(KilowattSynthesis): Add 2 bearings on the top, probably.
+
 
 @dataclass
 class Spec:
     """Specification for bearing_holder."""
 
     bearing_od: float = 16
-    bearing_id: float = 8.0 - 0.1
+    bearing_id: float = 8.0
     bearing_thickness: float = 5.0
 
     gap_between_bearings = 2.0
@@ -48,7 +50,8 @@ class Spec:
 
         Also the diameter of the long part of the bearing adapter.
         """
-        return self.bearing_id - 0.7
+        # Could subtract a bit. -0.7mm was too much though.
+        return self.bearing_id
 
 
 def stepper_grip(spec: Spec) -> bd.Part | bd.Compound:
@@ -206,11 +209,13 @@ def bearing_adapter(spec: Spec) -> bd.Part | bd.Compound:
     """Adapter on the inside of the bearing, to the sewing needle."""
     p = bd.Part(None)
 
+    offset_down = 5
+
     p += bd.Cylinder(
         radius=spec.bearing_id / 2,
-        height=spec.bearing_holder_z_height,
+        height=spec.bearing_holder_z_height + offset_down,
         align=bde.align.ANCHOR_BOTTOM,
-    )
+    ).translate((0, 0, -offset_down))
 
     # Add flange.
     p += bd.Pos(Z=spec.bearing_holder_z_height) * bd.Cone(
@@ -228,16 +233,19 @@ def bearing_adapter(spec: Spec) -> bd.Part | bd.Compound:
     )
 
     # Remove the needle shaft (round, with flats).
-    p -= bd.Cylinder(
-        radius=spec.needle_shaft_od / 2,
-        height=spec.bearing_holder_z_height,
-        align=bde.align.ANCHOR_BOTTOM,
-    ) & bd.Box(
-        spec.needle_shaft_flats_width,
-        10,
-        spec.bearing_holder_z_height,
-        align=bde.align.ANCHOR_BOTTOM,
-    )
+    p -= (
+        bd.Cylinder(
+            radius=spec.needle_shaft_od / 2,
+            height=spec.bearing_holder_z_height,
+            align=bde.align.ANCHOR_BOTTOM,
+        )
+        & bd.Box(
+            spec.needle_shaft_flats_width,
+            10,
+            spec.bearing_holder_z_height,
+            align=bde.align.ANCHOR_BOTTOM,
+        )
+    ).translate((0, 0, -offset_down))
 
     # Remove passage for the thread/wire (bottom).
     p -= bd.Pos(Z=spec.bearing_holder_z_height + 2) * bd.Cylinder(
