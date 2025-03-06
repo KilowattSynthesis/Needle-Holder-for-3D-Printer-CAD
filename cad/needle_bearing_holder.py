@@ -199,8 +199,14 @@ def assembly(spec: Spec) -> bd.Part | bd.Compound:
     p += bd.Pos(X=25) * bearing_adapter(spec)
 
     p += bd.Pos(
-        X=50, Z=spec.mount_stepper_top_to_bottom_bearing_bottom
+        X=50,
+        Z=spec.mount_stepper_top_to_bottom_bearing_bottom,
     ) * spool_holder(spec)
+
+    p += bd.Pos(
+        X=50,
+        Z=spec.mount_stepper_top_to_bottom_bearing_bottom / 2,
+    ) * locking_ring(spec)
 
     return p
 
@@ -234,8 +240,9 @@ def bearing_adapter(spec: Spec) -> bd.Part | bd.Compound:
 
     # Remove the needle shaft (round, with flats).
     p -= (
-        bd.Cylinder(
-            radius=spec.needle_shaft_od / 2,
+        bd.Cone(  # Cone for friction fit.
+            top_radius=(spec.needle_shaft_od - 0.15) / 2,
+            bottom_radius=spec.needle_shaft_od / 2,
             height=spec.bearing_holder_z_height,
             align=bde.align.ANCHOR_BOTTOM,
         )
@@ -252,6 +259,14 @@ def bearing_adapter(spec: Spec) -> bd.Part | bd.Compound:
         radius=3.2 / 2,
         height=spec.bearing_holder_z_height * 5,
     ).rotate(axis=bd.Axis.Y, angle=40)
+    p -= bd.Pos(
+        X=-spec.bearing_id / 2, Z=spec.bearing_holder_z_height
+    ) * bd.Box(
+        1.5,
+        3,
+        25,
+        align=(bd.Align.MIN, bd.Align.CENTER, bd.Align.MAX),
+    )
 
     # Remove passage for the thread/wire (top, on +X side).
     p -= bd.Pos(
@@ -290,10 +305,13 @@ def spool_holder(spec: Spec) -> bd.Part | bd.Compound:
     )
 
     p -= bd.Cylinder(
-        radius=spec.diameter_at_spool_holder / 2 + 0.25,
+        radius=(spec.diameter_at_spool_holder + 0.1) / 2,
         height=10,
         align=bde.align.ANCHOR_BOTTOM,
     )
+
+    # Create a gap for bolt clamping.
+    p -= bd.Box(3, 10, 50, align=bde.align.ANCHOR_FRONT)
 
     # Remove screw hole.
     p -= bd.Pos(Z=10 / 2) * bd.Cylinder(
@@ -320,6 +338,33 @@ def spool_holder(spec: Spec) -> bd.Part | bd.Compound:
     return p
 
 
+def locking_ring(spec: Spec) -> bd.Part | bd.Compound:
+    """Locking ring for just below the top bearing/spool."""
+    p = bd.Part(None)
+
+    p += bd.Cylinder(
+        radius=spec.diameter_at_spool_holder / 2 + spec.general_wall_thickness,
+        height=6,
+        align=bde.align.ANCHOR_BOTTOM,
+    )
+
+    p -= bd.Cylinder(
+        radius=spec.diameter_at_spool_holder / 2,
+        height=10,
+        align=bde.align.ANCHOR_BOTTOM,
+    )
+
+    # Create a gap for bolt clamping.
+    p -= bd.Box(
+        2,
+        10,
+        30,
+        align=bde.align.ANCHOR_FRONT,
+    )
+
+    return p
+
+
 if __name__ == "__main__":
     parts = {
         "assembly": show(assembly(Spec())),
@@ -327,6 +372,7 @@ if __name__ == "__main__":
         "stepper_grip": (stepper_grip(Spec())),
         "bearing_adapter": (bearing_adapter(Spec())),
         "spool_holder": (spool_holder(Spec())),
+        "locking_ring": (locking_ring(Spec())),
     }
 
     logger.info("Showing CAD model(s)")
